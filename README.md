@@ -1,8 +1,10 @@
 ## Configure following configuration properties
 
+```
 spring.cloud.azure.storage.blob.account-name=...
 spring.cloud.azure.storage.blob.account-key=...
 spring.cloud.azure.storage.blob.endpoint=...
+```
 
 ## Build for native
 
