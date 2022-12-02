@@ -32,7 +32,7 @@ import org.springframework.web.client.RestTemplate;
  * Function that takes as input the URL of the image
  */
 @Component
-public class Resize implements Function<String, String> {
+public class Resize implements Function<ResizeOptions, String> {
 
 	private final RestTemplate restTemplate;
 
@@ -47,20 +47,26 @@ public class Resize implements Function<String, String> {
 	}
 
 	@Override
-	public String apply(String url) {
-		byte[] imageData = restTemplate.getForObject(url, byte[].class);
+	public String apply(ResizeOptions options) {
+		byte[] imageData = restTemplate.getForObject(options.url(), byte[].class);
 		Assert.notNull(imageData, "imageData should not be null");
 		InputStream inputStream = new ByteArrayInputStream(imageData);
 
-		String filename = getFilename(url);
+		String filename = getFilename(options.url());
 		String format = getFormat(filename);
 
 		BlobClient blobClient = this.blobContainerClient.getBlobClient(filename);
 		BlobHttpHeaders blobHttpHeaders = new BlobHttpHeaders();
 		blobHttpHeaders.setContentType("image/" + format);
 		try (BlobOutputStream blobOutputStream = blobClient.getBlockBlobClient().getBlobOutputStream(true)) {
-			// TODO change hardcoded percentage
-			resize(ImageIO.read(inputStream), blobOutputStream, format, 0.5);
+			if (options.ratio() > 0) {
+				resize(ImageIO.read(inputStream), blobOutputStream, format, options.ratio());
+			}
+			else {
+				Assert.isTrue(options.width() > 0, "width parameter should be > 0 when percent parameter is not specified");
+				Assert.isTrue(options.height() > 0, "height parameter should be > 0 when percent parameter is not specified");
+				resize(ImageIO.read(inputStream), blobOutputStream, format, options.width(), options.height());
+			}
 		} catch (IOException ex) {
 			throw new IllegalStateException(ex);
 		}
@@ -82,22 +88,20 @@ public class Resize implements Function<String, String> {
 	}
 
 	private void resize(BufferedImage inputImage,
-			OutputStream outputStream, String format, int scaledWidth, int scaledHeight)
+			OutputStream outputStream, String format, int width, int height)
 			throws IOException {
 
-		BufferedImage outputImage = new BufferedImage(scaledWidth,
-				scaledHeight, inputImage.getType());
+		BufferedImage outputImage = new BufferedImage(width, height, inputImage.getType());
 		Graphics2D graphics2D = outputImage.createGraphics();
-		graphics2D.drawImage(inputImage, 0, 0, scaledWidth, scaledHeight, null);
+		graphics2D.drawImage(inputImage, 0, 0, width, height, null);
 		graphics2D.dispose();
-
 		ImageIO.write(outputImage, format, outputStream);
 	}
 
 	private void resize(BufferedImage inputImage,
-			OutputStream outputStream, String format, double percent) throws IOException {
-		int scaledWidth = (int) (inputImage.getWidth() * percent);
-		int scaledHeight = (int) (inputImage.getHeight() * percent);
+			OutputStream outputStream, String format, double ratio) throws IOException {
+		int scaledWidth = (int) (inputImage.getWidth() * ratio);
+		int scaledHeight = (int) (inputImage.getHeight() * ratio);
 		resize(inputImage, outputStream, format, scaledWidth, scaledHeight);
 	}
 
