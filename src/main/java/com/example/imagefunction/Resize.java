@@ -48,24 +48,23 @@ public class Resize implements Function<ResizeOptions, String> {
 
 	@Override
 	public String apply(ResizeOptions options) {
-		byte[] imageData = restTemplate.getForObject(options.url(), byte[].class);
+		byte[] imageData = restTemplate.getForObject(options.getUrl(), byte[].class);
 		Assert.notNull(imageData, "imageData should not be null");
 		InputStream inputStream = new ByteArrayInputStream(imageData);
 
-		String filename = getFilename(options.url());
+		String filename = getFilename(options.getUrl());
 		String format = getFormat(filename);
 
 		BlobClient blobClient = this.blobContainerClient.getBlobClient(filename);
 		BlobHttpHeaders blobHttpHeaders = new BlobHttpHeaders();
 		blobHttpHeaders.setContentType("image/" + format);
+		Assert.isTrue(options.getRatio() > 0 || options.getWidth() > 0 || options.getHeight() > 0, "Please specify at least ratio, width or height option");
 		try (BlobOutputStream blobOutputStream = blobClient.getBlockBlobClient().getBlobOutputStream(true)) {
-			if (options.ratio() > 0) {
-				resize(ImageIO.read(inputStream), blobOutputStream, format, options.ratio());
+			if (options.getRatio() > 0) {
+				resize(ImageIO.read(inputStream), blobOutputStream, format, options.getRatio());
 			}
 			else {
-				Assert.isTrue(options.width() > 0, "width parameter should be > 0 when percent parameter is not specified");
-				Assert.isTrue(options.height() > 0, "height parameter should be > 0 when percent parameter is not specified");
-				resize(ImageIO.read(inputStream), blobOutputStream, format, options.width(), options.height());
+				resize(ImageIO.read(inputStream), blobOutputStream, format, options.getWidth(), options.getHeight());
 			}
 		} catch (IOException ex) {
 			throw new IllegalStateException(ex);
@@ -91,6 +90,12 @@ public class Resize implements Function<ResizeOptions, String> {
 			OutputStream outputStream, String format, int width, int height)
 			throws IOException {
 
+		if (width == 0) {
+			width = (int) (inputImage.getWidth() * (height / (float) inputImage.getHeight()));
+		}
+		if (height == 0) {
+			height = (int) (inputImage.getHeight() * (width / (float) inputImage.getWidth()));
+		}
 		BufferedImage outputImage = new BufferedImage(width, height, inputImage.getType());
 		Graphics2D graphics2D = outputImage.createGraphics();
 		graphics2D.drawImage(inputImage, 0, 0, width, height, null);
