@@ -15,6 +15,7 @@ import java.util.function.Function;
 import javax.imageio.ImageIO;
 
 import com.azure.core.util.Context;
+import com.azure.spring.cloud.autoconfigure.implementation.storage.blob.properties.AzureStorageBlobProperties;
 import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.BlobServiceClient;
@@ -38,33 +39,33 @@ public class Resize implements Function<ResizeOptions, String> {
 
 	private final BlobContainerClient blobContainerClient;
 
-	public Resize(BlobServiceClient blobServiceClient, RestTemplateBuilder restTemplateBuilder) {
+	public Resize(BlobServiceClient blobServiceClient, RestTemplateBuilder restTemplateBuilder, AzureStorageBlobProperties blobProperties) {
 		BlobContainerCreateOptions options = new BlobContainerCreateOptions();
 		options.setPublicAccessType(PublicAccessType.BLOB);
-		this.blobContainerClient = blobServiceClient.createBlobContainerIfNotExistsWithResponse("images", options, Context.NONE).getValue();
+		this.blobContainerClient = blobServiceClient.createBlobContainerIfNotExistsWithResponse(blobProperties.getContainerName(), options, Context.NONE).getValue();
 		this.restTemplate = restTemplateBuilder.setConnectTimeout(Duration.ofSeconds(5))
 				.setReadTimeout(Duration.ofSeconds(5)).build();
 	}
 
 	@Override
 	public String apply(ResizeOptions options) {
-		byte[] imageData = restTemplate.getForObject(options.getUrl(), byte[].class);
+		byte[] imageData = restTemplate.getForObject(options.url(), byte[].class);
 		Assert.notNull(imageData, "imageData should not be null");
 		InputStream inputStream = new ByteArrayInputStream(imageData);
 
-		String filename = getFilename(options.getUrl());
+		String filename = getFilename(options.url());
 		String format = getFormat(filename);
 
 		BlobClient blobClient = this.blobContainerClient.getBlobClient(filename);
 		BlobHttpHeaders blobHttpHeaders = new BlobHttpHeaders();
 		blobHttpHeaders.setContentType("image/" + format);
-		Assert.isTrue(options.getRatio() > 0 || options.getWidth() > 0 || options.getHeight() > 0, "Please specify at least ratio, width or height option");
+		Assert.isTrue(options.ratio() > 0 || options.width() > 0 || options.height() > 0, "Please specify at least ratio, width or height option");
 		try (BlobOutputStream blobOutputStream = blobClient.getBlockBlobClient().getBlobOutputStream(true)) {
-			if (options.getRatio() > 0) {
-				resize(ImageIO.read(inputStream), blobOutputStream, format, options.getRatio());
+			if (options.ratio() > 0) {
+				resize(ImageIO.read(inputStream), blobOutputStream, format, options.ratio());
 			}
 			else {
-				resize(ImageIO.read(inputStream), blobOutputStream, format, options.getWidth(), options.getHeight());
+				resize(ImageIO.read(inputStream), blobOutputStream, format, options.width(), options.height());
 			}
 		} catch (IOException ex) {
 			throw new IllegalStateException(ex);

@@ -8,13 +8,14 @@ Checkout https://github.com/Azure/azure-sdk-for-java/pull/32417 and install it b
 spring.cloud.azure.storage.blob.account-name=...
 spring.cloud.azure.storage.blob.account-key=...
 spring.cloud.azure.storage.blob.endpoint=...
+server.port=...
 ```
 
-## Build & run
+## Build
 
-To run with SCF exposed via Spring MVC
+To build as a native image
 ```
-./mvnw -Pweb spring-boot:run
+./mvnw -Pnative clean native:compile
 ```
 
 ## Sample HTTP request
