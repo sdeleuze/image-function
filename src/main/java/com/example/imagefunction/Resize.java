@@ -3,26 +3,19 @@ package com.example.imagefunction;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.function.Function;
 
 import javax.imageio.ImageIO;
-
-import com.azure.core.util.Context;
-import com.azure.spring.cloud.autoconfigure.implementation.storage.blob.properties.AzureStorageBlobProperties;
-import com.azure.storage.blob.BlobClient;
-import com.azure.storage.blob.BlobContainerClient;
-import com.azure.storage.blob.BlobServiceClient;
-import com.azure.storage.blob.models.BlobHttpHeaders;
-import com.azure.storage.blob.models.PublicAccessType;
-import com.azure.storage.blob.options.BlobContainerCreateOptions;
-import com.azure.storage.blob.specialized.BlobOutputStream;
 
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.stereotype.Component;
@@ -37,12 +30,7 @@ public class Resize implements Function<ResizeOptions, String> {
 
 	private final RestTemplate restTemplate;
 
-	private final BlobContainerClient blobContainerClient;
-
-	public Resize(BlobServiceClient blobServiceClient, RestTemplateBuilder restTemplateBuilder, AzureStorageBlobProperties blobProperties) {
-		BlobContainerCreateOptions options = new BlobContainerCreateOptions();
-		options.setPublicAccessType(PublicAccessType.BLOB);
-		this.blobContainerClient = blobServiceClient.createBlobContainerIfNotExistsWithResponse(blobProperties.getContainerName(), options, Context.NONE).getValue();
+	public Resize(RestTemplateBuilder restTemplateBuilder) {
 		this.restTemplate = restTemplateBuilder.setConnectTimeout(Duration.ofSeconds(5))
 				.setReadTimeout(Duration.ofSeconds(5)).build();
 	}
@@ -56,22 +44,22 @@ public class Resize implements Function<ResizeOptions, String> {
 		String filename = getFilename(options.url());
 		String format = getFormat(filename);
 
-		BlobClient blobClient = this.blobContainerClient.getBlobClient(filename);
-		BlobHttpHeaders blobHttpHeaders = new BlobHttpHeaders();
-		blobHttpHeaders.setContentType("image/" + format);
 		Assert.isTrue(options.ratio() > 0 || options.width() > 0 || options.height() > 0, "Please specify at least ratio, width or height option");
-		try (BlobOutputStream blobOutputStream = blobClient.getBlockBlobClient().getBlobOutputStream(true)) {
+		try {
+			String tmpdir = Files.createTempDirectory("tmpDirPrefix").toFile().getAbsolutePath();
+			File resizedImageFile = new File(tmpdir + File.separator + filename);
 			if (options.ratio() > 0) {
-				resize(ImageIO.read(inputStream), blobOutputStream, format, options.ratio());
+				resize(ImageIO.read(inputStream), new FileOutputStream(resizedImageFile), format, options.ratio());
 			}
 			else {
-				resize(ImageIO.read(inputStream), blobOutputStream, format, options.width(), options.height());
+				resize(ImageIO.read(inputStream), new FileOutputStream(resizedImageFile), format, options.width(), options.height());
 			}
-		} catch (IOException ex) {
-			throw new IllegalStateException(ex);
 		}
-		blobClient.setHttpHeaders(blobHttpHeaders);
-		return blobClient.getBlobUrl();
+		catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+
+		return "";
 	}
 
 	private String getFilename(String url) {
