@@ -13,6 +13,7 @@ import com.azure.storage.blob.options.BlobContainerCreateOptions;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +27,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import static org.springframework.http.ResponseEntity.unprocessableEntity;
 
 @RestController
+@RegisterReflectionForBinding({ VisionRequestBody.class, VisionResponseBody.class })
 class ImageController {
 
 	private final BlobContainerAsyncClient blobContainerClient;
