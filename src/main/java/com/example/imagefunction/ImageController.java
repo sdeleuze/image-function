@@ -15,11 +15,15 @@ import reactor.core.publisher.Mono;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.client.WebClient;
+
+import static org.springframework.http.ResponseEntity.unprocessableEntity;
 
 @RestController
 class ImageController {
@@ -57,16 +61,20 @@ class ImageController {
 
 	}
 
+	@ExceptionHandler(InvalidImageException.class)
+	ResponseEntity<String> invalidImage(InvalidImageException ex) {
+		return unprocessableEntity().body(ex.getMessage());
+	}
+
 	private Mono<VisionResponseBody> validate(VisionResponseBody visionResponseBody, BlobAsyncClient blobClient) {
-		if (visionResponseBody.tags().stream().noneMatch(tag ->
+		if (visionProperties.mandatoryTag() != null && visionResponseBody.tags().stream().noneMatch(tag ->
 			tag.name().equals(visionProperties.mandatoryTag()) && tag.confidence() > 0.5
 		)) {
-			return blobClient.deleteIfExists().then(Mono.error(new IllegalStateException("Validation failed, tags need to contain " + visionProperties.mandatoryTag() + " with a confidence greater than 0.5")));
+			return blobClient.deleteIfExists().then(Mono.error(new InvalidImageException("Validation failed, tags need to contain " + visionProperties.mandatoryTag() + " with a confidence greater than 0.5")));
 		} else {
 			return Mono.just(visionResponseBody);
 		}
 	}
-
 
 	private String getFormat(String filename) {
 		return filename.substring(filename.lastIndexOf(".") + 1);

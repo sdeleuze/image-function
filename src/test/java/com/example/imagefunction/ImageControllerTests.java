@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.reactive.function.BodyInserters;
 
@@ -36,7 +37,7 @@ public class ImageControllerTests {
 		String filename = "radiator.jpg";
 		ClassPathResource radiator = new ClassPathResource(filename);
 		webTestClient.post().uri("process?filename=" + filename)
-				.body(BodyInserters.fromResource(radiator)).exchange().expectStatus().is5xxServerError();
+				.body(BodyInserters.fromResource(radiator)).exchange().expectStatus().isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
 	}
 
 }
