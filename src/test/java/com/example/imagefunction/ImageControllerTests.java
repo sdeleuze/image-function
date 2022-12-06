@@ -16,7 +16,7 @@ public class ImageControllerTests {
 	private WebTestClient webTestClient;
 
 	@Test
-	void upload() {
+	void uploadCat() {
 		String filename = "marcel.jpg";
 		ClassPathResource marcel = new ClassPathResource(filename);
 		webTestClient.post().uri("process?filename=" + filename)
@@ -24,7 +24,19 @@ public class ImageControllerTests {
 				.expectBody(ImageProcessingResult.class).consumeWith(entityResult -> {
 					ImageProcessingResult result = entityResult.getResponseBody();
 					Assertions.assertThat(result.url()).startsWith("https://");
+					Assertions.assertThat(result.tags()).anySatisfy(tag -> {
+						Assertions.assertThat(tag.name()).isEqualTo("cat");
+						Assertions.assertThat(tag.confidence()).isGreaterThan(0.5f);
+					});
 				});
+	}
+
+	@Test
+	void uploadRadiator() {
+		String filename = "radiator.jpg";
+		ClassPathResource radiator = new ClassPathResource(filename);
+		webTestClient.post().uri("process?filename=" + filename)
+				.body(BodyInserters.fromResource(radiator)).exchange().expectStatus().is5xxServerError();
 	}
 
 }

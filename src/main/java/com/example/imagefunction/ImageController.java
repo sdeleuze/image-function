@@ -13,21 +13,33 @@ import com.azure.storage.blob.options.BlobContainerCreateOptions;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.reactive.function.client.WebClient;
 
 @RestController
 class ImageController {
 
 	private final BlobContainerAsyncClient blobContainerClient;
 
-	ImageController(BlobServiceAsyncClient blobServiceClient, AzureStorageBlobProperties blobProperties) {
+	private final WebClient webClient;
+
+	private final VisionProperties visionProperties;
+
+	ImageController(BlobServiceAsyncClient blobServiceClient, AzureStorageBlobProperties blobProperties,
+			WebClient.Builder webClientBuilder, VisionProperties visionProperties) {
 		BlobContainerCreateOptions options = new BlobContainerCreateOptions();
 		options.setPublicAccessType(PublicAccessType.BLOB);
 		this.blobContainerClient = blobServiceClient.getBlobContainerAsyncClient(blobProperties.getContainerName());
 		this.blobContainerClient.createIfNotExistsWithResponse(options).block();
+		this.visionProperties = visionProperties;
+		this.webClient = webClientBuilder.baseUrl(visionProperties.url())
+				.defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+				.defaultHeader("Ocp-Apim-Subscription-Key", visionProperties.key()).build();
 	}
 
 	@PostMapping("/process")
@@ -35,10 +47,26 @@ class ImageController {
 		BlobAsyncClient blobClient = this.blobContainerClient.getBlobAsyncClient(filename);
 		BlobHttpHeaders blobHttpHeaders = new BlobHttpHeaders();
 		blobHttpHeaders.setContentType("image/" + getFormat(filename));
-		return blobClient.upload(requestBody, new ParallelTransferOptions(), true)
-				.flatMap(item -> blobClient.setHttpHeaders(blobHttpHeaders))
-				.thenReturn(new ImageProcessingResult(blobClient.getBlobUrl()));
+		String blobUrl = blobClient.getBlobUrl();
+		return blobClient
+				.upload(requestBody, new ParallelTransferOptions(), true)
+				.flatMap(v -> blobClient.setHttpHeaders(blobHttpHeaders)
+						.then(this.webClient.post().bodyValue(new VisionRequestBody(blobUrl)).retrieve().bodyToMono(VisionResponseBody.class))
+						.flatMap(visionResponseBody -> validate(visionResponseBody, blobClient))
+						.map(visionResponseBody -> new ImageProcessingResult(blobUrl, visionResponseBody.tags())));
+
 	}
+
+	private Mono<VisionResponseBody> validate(VisionResponseBody visionResponseBody, BlobAsyncClient blobClient) {
+		if (visionResponseBody.tags().stream().noneMatch(tag ->
+			tag.name().equals(visionProperties.mandatoryTag()) && tag.confidence() > 0.5
+		)) {
+			return blobClient.deleteIfExists().then(Mono.error(new IllegalStateException("Validation failed, tags need to contain " + visionProperties.mandatoryTag() + " with a confidence greater than 0.5")));
+		} else {
+			return Mono.just(visionResponseBody);
+		}
+	}
+
 
 	private String getFormat(String filename) {
 		return filename.substring(filename.lastIndexOf(".") + 1);

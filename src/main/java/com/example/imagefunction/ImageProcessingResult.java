@@ -1,3 +1,5 @@
 package com.example.imagefunction;
 
-public record ImageProcessingResult(String url) {}
+import java.util.List;
+
+public record ImageProcessingResult(String url, List<Tag> tags) {}
