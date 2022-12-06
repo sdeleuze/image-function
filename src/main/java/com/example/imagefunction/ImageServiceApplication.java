@@ -6,10 +6,10 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 
 @SpringBootApplication(proxyBeanMethods = false)
 @EnableConfigurationProperties(VisionProperties.class)
-public class ImageFunctionApplication {
+public class ImageServiceApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(ImageFunctionApplication.class, args);
+		SpringApplication.run(ImageServiceApplication.class, args);
 	}
 
 }

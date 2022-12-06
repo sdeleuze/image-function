@@ -1,3 +1,5 @@
+Image service that leverages Azure Storage and Azure Computer Vision via a Spring Boot 3 application that can be compiled to native.
+
 ## Pre-requisites
 
 Checkout https://github.com/Azure/azure-sdk-for-java/tree/feature/spring-boot-3 and install it by following https://github.com/Azure/azure-sdk-for-java/tree/main/sdk/spring#build-from-source instructions.
@@ -27,12 +29,19 @@ mvn clean install \
 spring.cloud.azure.storage.blob.account-name=...
 spring.cloud.azure.storage.blob.account-key=...
 spring.cloud.azure.storage.blob.endpoint=...
+vision.url=...
+vision.key=...
 ```
 
-## Build
+## Build & run
 
-To build as a native image
+To build as a native executable
 ```
 ./mvnw -Pnative clean native:compile
-target/image-function
+target/image-service
+```
+
+To build a native container image for deployment in the Cloud
+```
+./mvn -Pnative spring-boot:build-image
 ```
