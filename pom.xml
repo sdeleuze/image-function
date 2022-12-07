@@ -65,6 +65,7 @@
 						<builder>paketobuildpacks/builder:tiny</builder>
 						<env>
 							<BP_NATIVE_IMAGE_BUILD_ARGUMENTS>-Djava.security.properties=/workspace/BOOT-INF/classes/custom.security</BP_NATIVE_IMAGE_BUILD_ARGUMENTS>
+							<BP_BINARY_COMPRESSION_METHOD>upx</BP_BINARY_COMPRESSION_METHOD>
 						</env>
 					</image>
 				</configuration>
