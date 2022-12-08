@@ -20,5 +20,5 @@ target/image-service
 
 To build a native container image for deployment in the Cloud
 ```
-./mvn -Pnative spring-boot:build-image
+./mvnw -Pnative clean spring-boot:build-image
 ```
