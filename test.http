@@ -1,0 +1,4 @@
+POST http://localhost:8081/process?filename=marcel.jpg
+Content-Type: application/octet-stream
+
+< ./src/test/resources/marcel.jpg
