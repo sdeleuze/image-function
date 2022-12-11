@@ -29,6 +29,10 @@ public class ImageControllerTests {
 						Assertions.assertThat(tag.name()).isEqualTo("cat");
 						Assertions.assertThat(tag.confidence()).isGreaterThan(0.5f);
 					});
+					Assertions.assertThat(result.tags()).anySatisfy(tag -> {
+						Assertions.assertThat(tag.name()).isEqualTo("animal");
+						Assertions.assertThat(tag.confidence()).isGreaterThan(0.5f);
+					});
 				});
 	}
 

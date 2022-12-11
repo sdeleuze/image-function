@@ -1,6 +1,7 @@
 package com.example.imagefunction;
 
 import java.nio.ByteBuffer;
+import java.util.List;
 
 import com.azure.spring.cloud.autoconfigure.implementation.storage.blob.properties.AzureStorageBlobProperties;
 import com.azure.storage.blob.BlobAsyncClient;
@@ -10,6 +11,7 @@ import com.azure.storage.blob.models.BlobHttpHeaders;
 import com.azure.storage.blob.models.ParallelTransferOptions;
 import com.azure.storage.blob.models.PublicAccessType;
 import com.azure.storage.blob.options.BlobContainerCreateOptions;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -82,4 +84,20 @@ class ImageController {
 		return filename.substring(filename.lastIndexOf(".") + 1);
 	}
 
+}
+
+record VisionRequestBody(String url) {}
+
+record Tag(String name, Float confidence) {}
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+record VisionResponseBody(String modelVersion, String requestId, List<Tag> tags) {}
+
+record ImageProcessingResult(String url, List<Tag> tags) {}
+
+class InvalidImageException extends RuntimeException{
+
+	InvalidImageException(String message) {
+		super(message);
+	}
 }
